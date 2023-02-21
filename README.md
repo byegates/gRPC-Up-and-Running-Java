@@ -56,7 +56,7 @@ After above command, you should see:
 ```shell
 java -jar client/build/libs/client-1.0-SNAPSHOT.jar
 ```
-After above command, you should see:
+After above command, you should see(Product ID will be different, but in UUID format):
 ```shell
 [Client] [C] [SUCCESS] Product ID: 5c1ee214-11fa-4427-aa84-de476ace810f
 
