@@ -12,7 +12,7 @@ repositories {
     mavenCentral()
 }
 
-def grpcVersion = '1.53.0'
+def grpcVersion = '1.46.1' // '1.53.0' causing " java.lang.NoClassDefFoundError: io/netty/channel/group/ChannelMatchers"
 def protobufVersion = '3.21.12' // 3.22.0 has issues, temporarily reserve back to 3.21.12
 
 dependencies {
@@ -43,14 +43,6 @@ protobuf {
 
 // Inform IDEs like IntelliJ IDEA, Eclipse or NetBeans about the generated code.
 sourceSets.main.java.srcDir new File(buildDir, 'generated/source')
-//sourceSets {
-//    main {
-//        java {
-//            srcDirs 'build/generated/source/proto/main/grpc'
-//            srcDirs 'build/generated/source/proto/main/java'
-//        }
-//    }
-//}
 
 jar {
 //    configurations.implementation.setCanBeResolved(true)

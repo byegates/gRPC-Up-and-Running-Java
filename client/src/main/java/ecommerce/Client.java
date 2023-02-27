@@ -4,15 +4,14 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
 public class Client {
 
     public static final String tag = "[Client]";
     public static final int port = 50071;
-    private static final Logger logger = Logger.getLogger(Client.class.getName());
 
     public static void main(String[] args) {
         ManagedChannel channel = ManagedChannelBuilder
@@ -24,136 +23,153 @@ public class Client {
         ProductID productID = addProduct(stub1);
 
         // unary get product
-        System.out.printf("%s [R] %s\n", tag, stub1.getProduct(productID));
+        getProduct(stub1, productID);
 
         var stub2 = OrderManagementGrpc.newBlockingStub(channel);
         var asyncStub = OrderManagementGrpc.newStub(channel);
 
         // Search Orders, server side streaming
-        var matchingOrdersItr = stub2.searchOrders(SearchRequest.newBuilder().setS("Google").build());
-        while (matchingOrdersItr.hasNext()) {
-            var order = matchingOrdersItr.next();
-            logger.info("Matching Order - " + order.getId());
-            logger.info(" Order :\n" + order);
-        }
+        searchOrders(stub2);
 
-        // Update Orders
+        // Update Orders, client side streaming
         updateOrders(asyncStub);
 
-        // Process Order
+        // Process Order, bidirectional streaming
         processOrders(asyncStub);
 
         channel.shutdown();
 
     }
 
+    private static void getProduct(ProductInfoGrpc.ProductInfoBlockingStub stub, ProductID id) {
+        var tag0 = tag + " [R]";
+        System.out.printf("%s [Invoked]\n", tag0);
+        System.out.printf("%s \n%s", tag0, stub.getProduct(id));
+        System.out.printf("%s [END]\n\n", tag0);
+    }
+
+    private static void searchOrders(OrderManagementGrpc.OrderManagementBlockingStub stub2) {
+        var tag0 = tag + " [SS]";
+        System.out.printf("%s [Invoked]\n", tag0);
+        var matchingOrdersItr = stub2.searchOrders(SearchRequest.newBuilder().setS("Google").build());
+        while (matchingOrdersItr.hasNext()) {
+            var order = matchingOrdersItr.next();
+            System.out.printf("%s Order :\n%s", tag0, order);
+        }
+        System.out.printf("%s [END]\n\n", tag0);
+    }
+
     private static void updateOrders(OrderManagementGrpc.OrderManagementStub asyncStub) {
+        var tag0 = tag + " [CS]";
+        System.out.printf("%s [Invoked]\n", tag0);
 
-        Order ord1 = Order.newBuilder()
-                .setId("102").addItems("Google Pixel 3A").addItems("Google Pixel Book")
-                .setDestination("Mountain View, CA").setPrice(1100).build();
-        Order ord2 = Order.newBuilder()
-                .setId("103").addItems("Apple Watch S4").addItems("Mac Book Pro").addItems("iPad Pro")
-                .setDestination("San Jose, CA").setPrice(2800).build();
-        Order ord3 = Order.newBuilder()
-                .setId("104").addItems("Google Home Mini").addItems("Google Nest Hub").addItems("iPad Mini")
-                .setDestination("Mountain View, CA").setPrice(2200).build();
+        List<Order> orders = List.of(
+                Order.newBuilder().setId("102").setDestination("Mountain View, CA").setPrice(1100)
+                        .addItems("Google Pixel 3A").addItems("Google Pixel Book").build(),
+                Order.newBuilder().setId("103").setDestination("San Jose, CA").setPrice(2800)
+                        .addItems("Apple Watch S4").addItems("Mac Book Pro").addItems("iPad Pro").build(),
+                Order.newBuilder().setId("104").setDestination("Mountain View, CA").setPrice(2200)
+                        .addItems("Google Home Mini").addItems("Google Nest Hub").addItems("iPad Mini").build()
+        );
 
-        final CountDownLatch finishLatch = new CountDownLatch(1);
+        final CountDownLatch latch = new CountDownLatch(1);
 
-        var updateOrderResponseObserver = new StreamObserver<OrderIdList>() {
+        var responseObserver = new StreamObserver<OrderIdList>() {
             @Override
             public void onNext(OrderIdList orders) {
-                logger.info("Update Orders Res :\n");
+                System.out.printf("%s Update Orders :\n", tag0);
                 for (var id : orders.getIdsList()) {
-                    logger.info(id + ", ");
+                    System.out.printf("%s, ", id);
                 }
+                System.out.println();
             }
 
             @Override
-            public void onError(Throwable t) {
-
-            }
+            public void onError(Throwable t) {}
 
             @Override
             public void onCompleted() {
-                logger.info("Update orders response completed!");
-                finishLatch.countDown();
+                System.out.printf("%s Update orders response completed!\n", tag0);
+                latch.countDown();
             }
         };
 
-        var updateOrderRequestObserver = asyncStub.updateOrders(updateOrderResponseObserver);
-        updateOrderRequestObserver.onNext(ord1);
-        updateOrderRequestObserver.onNext(ord2);
-        updateOrderRequestObserver.onNext(ord3);
-        updateOrderRequestObserver.onNext(ord3);
+        var requestObserver = asyncStub.updateOrders(responseObserver);
+        for (var ord : orders) {
+            requestObserver.onNext(ord);
+        }
+        requestObserver.onNext(orders.get(orders.size()-1));
 
-
-        if (finishLatch.getCount() == 0) {
-            logger.warning("RPC completed or errored before we finished sending.");
+        if (latch.getCount() == 0) {
+            System.out.printf("%s RPC completed or errored before we finished sending.", tag0);
             return;
         }
-        updateOrderRequestObserver.onCompleted();
+        requestObserver.onCompleted();
 
         // Receiving happens asynchronously
         try {
-            if (!finishLatch.await(10, TimeUnit.SECONDS)) {
-                logger.warning("FAILED : Process orders cannot finish within 10 seconds");
+            int timeout = 10;
+            if (!latch.await(timeout, TimeUnit.SECONDS)) {
+                System.out.printf("%s [FAILED] Process orders cannot finish within %d seconds.\n", tag0, timeout);
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
+        System.out.printf("%s [END]\n\n", tag0);
     }
 
     private static void processOrders(OrderManagementGrpc.OrderManagementStub asyncStub) {
+        var tag0 = tag + " [BI]";
+        System.out.printf("%s [Invoked]\n", tag0);
 
-        final CountDownLatch finishLatch = new CountDownLatch(1);
+        final CountDownLatch latch = new CountDownLatch(1);
 
-
-        var orderProcessResponseObserver = new StreamObserver<CombinedShipment>() {
+        var responseObserver = new StreamObserver<CombinedShipment>() {
             @Override
             public void onNext(CombinedShipment shipment) {
-                logger.info("Combined Shipment : " + shipment.getId() + " : " + shipment.getOrdersListList());
+                System.out.printf("%s Combined Shipment :\n%s :\n%s\n", tag0, shipment.getId(), shipment.getOrdersListList());
             }
 
             @Override
-            public void onError(Throwable t) {
-
-            }
+            public void onError(Throwable t) {}
 
             @Override
             public void onCompleted() {
-                logger.info("Order Processing completed!");
-                finishLatch.countDown();
+                System.out.printf("%s Order Processing completed!\n", tag0);
+                latch.countDown();
             }
         };
 
-        var orderProcessRequestObserver =  asyncStub.processOrders(orderProcessResponseObserver);
+        var requestObserver =  asyncStub.processOrders(responseObserver);
 
-        orderProcessRequestObserver.onNext(OrderId.newBuilder().setId("102").build());
-        orderProcessRequestObserver.onNext(OrderId.newBuilder().setId("103").build());
-        orderProcessRequestObserver.onNext(OrderId.newBuilder().setId("104").build());
-        orderProcessRequestObserver.onNext(OrderId.newBuilder().setId("101").build());
+        List<String> ids = List.of("102", "103", "104", "101");
+        for (var id : ids) {
+            requestObserver.onNext(OrderId.newBuilder().setId(id).build());
+        }
 
-        if (finishLatch.getCount() == 0) {
-            logger.warning("RPC completed or errored before we finished sending.");
+        if (latch.getCount() == 0) {
+            System.out.printf("%s RPC completed or errored before we finished sending.\n", tag0);
             return;
         }
-        orderProcessRequestObserver.onCompleted();
-
+        requestObserver.onCompleted();
 
         try {
-            if (!finishLatch.await(60, TimeUnit.SECONDS)) {
-                logger.warning("FAILED : Process orders cannot finish within 60 seconds");
+            int timeout = 60;
+            if (!latch.await(timeout, TimeUnit.SECONDS)) {
+                System.out.printf("%s [FAILED] Process orders cannot finish within %d seconds.\n", tag0, timeout);
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+        System.out.printf("%s [END]\n\n", tag0);
     }
 
 
     private static ProductID addProduct(ProductInfoGrpc.ProductInfoBlockingStub stub) {
+        var tag0 = tag + " [C]";
+        System.out.printf("%s [Invoked]\n", tag0);
         ProductID productID = stub.addProduct(
                 Product.newBuilder()
                         .setName("Apple iPhone 14 Pro Max")
@@ -162,7 +178,8 @@ public class Client {
                         .build()
         );
 
-        System.out.printf("%s [C] [SUCCESS] Product ID: %s\n\n", tag, productID.getValue());
+        System.out.printf("%s [SUCCESS] Product ID: %s\n", tag0, productID.getValue());
+        System.out.printf("%s [END]\n\n", tag0);
         return productID;
     }
 

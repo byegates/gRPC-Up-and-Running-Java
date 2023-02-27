@@ -15,8 +15,8 @@ public class ProductInfoImpl extends ProductInfoGrpc.ProductInfoImplBase {
 
     @Override
     public void addProduct(Product request, StreamObserver<ProductID> responseObserver) {
-        String tag0 = tag + " [ADD]";
-        System.out.printf("%s [Invoked]\n\n", tag0);
+        String tag0 = tag + " [C]";
+        System.out.printf("%s [Invoked]\n", tag0);
         UUID uuid = UUID.randomUUID();
         String uuidString = uuid.toString();
 
@@ -25,12 +25,13 @@ public class ProductInfoImpl extends ProductInfoGrpc.ProductInfoImplBase {
 
         responseObserver.onNext(id);
         responseObserver.onCompleted();
+        System.out.printf("%s [END]\n\n", tag0);
     }
 
     @Override
     public void getProduct(ProductID request, StreamObserver<Product> responseObserver) {
-        String tag0 = tag + " [GET]";
-        System.out.printf("%s [Invoked]\n\n", tag0);
+        String tag0 = tag + " [R]";
+        System.out.printf("%s [Invoked]\n", tag0);
         String id = request.getValue();
         var product = productMap.get(id);
 
@@ -40,5 +41,6 @@ public class ProductInfoImpl extends ProductInfoGrpc.ProductInfoImplBase {
         } else {
             responseObserver.onError(new StatusException(Status.NOT_FOUND));
         }
+        System.out.printf("%s [END]\n\n", tag0);
     }
 }

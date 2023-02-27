@@ -21,8 +21,7 @@ public class Server {
         server = ServerBuilder.forPort(port)
                 .addService(new ProductInfoImpl())
                 .addService(new OrderServiceImpl())
-                .build()
-                .start();
+                .build().start();
 
         System.out.printf("%s [started] listening on: %d\n", tag, port);
 

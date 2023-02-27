@@ -58,9 +58,62 @@ java -jar client/build/libs/client-1.0-SNAPSHOT.jar
 ```
 After above command, you should see(Product ID will be different, but in UUID format):
 ```shell
-[Client] [C] [SUCCESS] Product ID: 5c1ee214-11fa-4427-aa84-de476ace810f
+[Client] [C] [Invoked]
+[Client] [C] [SUCCESS] Product ID: 4261cfa3-d841-45cd-b500-880bcb3c7848
+[Client] [C] [END]
 
-[Client] [R] name: "Apple iPhone 14 Pro Max"
+[Client] [R] [Invoked]
+[Client] [R] 
+name: "Apple iPhone 14 Pro Max"
 description: "Pro. Beyond."
 price: 1099.0
+[Client] [R] [END]
+
+[Client] [SS] [Invoked]
+[Client] [SS] Order :
+id: "102"
+items: "Google Pixel 3A"
+items: "Mac Book Pro"
+price: 1800.0
+destination: "Mountain View, CA"
+[Client] [SS] Order :
+id: "104"
+items: "Google Home Mini"
+items: "Google Nest Hub"
+price: 400.0
+destination: "Mountain View, CA"
+[Client] [SS] [END]
+
+[Client] [CS] [Invoked]
+[Client] [CS] Update Orders :
+102, 103, 104, 104, 
+[Client] [CS] Update orders response completed!
+[Client] [CS] [END]
+
+[Client] [BI] [Invoked]
+[Client] [BI] Combined Shipment :
+CMB-220:San Jose, CA :
+[id: "103"
+items: "Apple Watch S4"
+items: "Mac Book Pro"
+items: "iPad Pro"
+price: 2800.0
+destination: "San Jose, CA"
+]
+[Client] [BI] Combined Shipment :
+CMB-406:Mountain View, CA :
+[id: "102"
+items: "Google Pixel 3A"
+items: "Google Pixel Book"
+price: 1100.0
+destination: "Mountain View, CA"
+, id: "104"
+items: "Google Home Mini"
+items: "Google Nest Hub"
+items: "iPad Mini"
+price: 2200.0
+destination: "Mountain View, CA"
+]
+[Client] [BI] Order Processing completed!
+[Client] [BI] [END]
 ```

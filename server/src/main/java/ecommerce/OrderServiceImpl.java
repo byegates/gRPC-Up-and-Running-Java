@@ -3,14 +3,12 @@ package ecommerce;
 import io.grpc.stub.StreamObserver;
 
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static ecommerce.Server.tag;
+
 public class OrderServiceImpl extends OrderManagementGrpc.OrderManagementImplBase {
-    private static final Logger logger = Logger.getLogger(OrderServiceImpl.class.getName());
-
-
     private final Order ord1 = Order.newBuilder()
             .setId("102").addItems("Google Pixel 3A").addItems("Mac Book Pro")
             .setDestination("Mountain View, CA").setPrice(1800).build();
@@ -42,31 +40,39 @@ public class OrderServiceImpl extends OrderManagementGrpc.OrderManagementImplBas
     // Unary
     @Override
     public void addOrder(Order request, StreamObserver<OrderId> responseObserver) {
-        logger.info("Order Added - ID: " + request.getId() + ", Destination : " + request.getDestination());
+        var tag0 = tag + " [C]";
+        System.out.printf("%s [Invoked]\n", tag0);
+        System.out.printf("%s Order Added - ID: %s\n, Destination :\n%s\n", tag0, request.getId(), request.getDestination());
         orderMap.put(request.getId(), request);
         responseObserver.onNext(OrderId.newBuilder().setId("100500").build());
         responseObserver.onCompleted();
+        System.out.printf("%s [END]\n\n", tag0);
     }
 
     // Unary
     @Override
     public void getOrder(OrderId request, StreamObserver<Order> responseObserver) {
+        var tag0 = tag + " [R]";
+        System.out.printf("%s [Invoked]\n", tag0);
         Order order = orderMap.get(request.getId());
         if (order != null) {
-            System.out.printf("Order Retrieved : ID - %s", order.getId());
+            System.out.printf("%s Order Retrieved : ID - %s\n", tag0, order.getId());
             responseObserver.onNext(order);
             responseObserver.onCompleted();
         } else  {
-            logger.info("Order : " + request.getId() + " - Not found.");
+            System.out.printf("%s [Not Found] %s\n", tag0, request.getId());
             responseObserver.onCompleted();
         }
         // ToDo  Handle errors
         // responseObserver.onError();
+        System.out.printf("%s [END]\n\n", tag0);
     }
 
     // Server Streaming
     @Override
     public void searchOrders(SearchRequest request, StreamObserver<Order> responseObserver) {
+        var tag0 = tag + " [CS]";
+        System.out.printf("%s [Invoked]\n", tag0);
 
         for (Map.Entry<String, Order> orderEntry : orderMap.entrySet()) {
             Order order = orderEntry.getValue();
@@ -74,18 +80,21 @@ public class OrderServiceImpl extends OrderManagementGrpc.OrderManagementImplBas
             for (int index = 0; index < itemsCount; index++) {
                 String item = order.getItems(index);
                 if (item.contains(request.getS())) {
-                    logger.info("Item found " + item);
+                    System.out.printf("%s [Found] %s\n",tag0, item);
                     responseObserver.onNext(order);
                     break;
                 }
             }
         }
         responseObserver.onCompleted();
+        System.out.printf("%s [END]\n\n", tag0);
     }
 
     // Client Streaming
     @Override
     public StreamObserver<Order> updateOrders(StreamObserver<OrderIdList> responseObserver) {
+        var tag0 = tag + " [SS]";
+        System.out.printf("%s [Invoked]\n", tag0);
         return new StreamObserver<>() {
             final List<String> orders = new ArrayList<>();
 
@@ -94,20 +103,21 @@ public class OrderServiceImpl extends OrderManagementGrpc.OrderManagementImplBas
                 if (ord != null) {
                     orderMap.put(ord.getId(), ord);
                     orders.add(ord.getId());
-                    logger.info("Order ID : " + ord.getId() + " - Updated");
+                    System.out.printf("%s [Updated] %s\n", tag0, ord.getId());
                 }
             }
 
             @Override
             public void onError(Throwable t) {
-                logger.info("Order ID update error " + t.getMessage());
+                System.out.printf("%s [Error] %s\n", tag0, t.getMessage());
             }
 
             @Override
             public void onCompleted() {
-                logger.info("Update orders - Completed");
+                System.out.printf("%s Update orders - Completed\n", tag0);
                 responseObserver.onNext(OrderIdList.newBuilder().addAllIds(orders).build());
                 responseObserver.onCompleted();
+                System.out.printf("%s [END]\n\n", tag0);
             }
         };
     }
@@ -116,15 +126,17 @@ public class OrderServiceImpl extends OrderManagementGrpc.OrderManagementImplBas
     // Bi-di Streaming
     @Override
     public StreamObserver<OrderId> processOrders(StreamObserver<CombinedShipment> responseObserver) {
+        var tag0 = tag + " [BI]";
+        System.out.printf("%s [Invoked]\n", tag0);
 
         return new StreamObserver<>() {
             int batchMarker = 0;
             @Override
             public void onNext(OrderId ord) {
-                logger.info("Order Proc : ID - " + ord.getId());
+                System.out.printf("%s Order Proc : ID - %s\n", tag0, ord.getId());
                 var currentOrder = orderMap.get(ord.getId());
                 if (currentOrder == null) {
-                    logger.info("No order found. ID - " + ord.getId());
+                    System.out.printf("%s [Not Found] %s\n", tag0, ord.getId());
                     return;
                 }
                 // Processing an order and increment batch marker to
@@ -157,9 +169,7 @@ public class OrderServiceImpl extends OrderManagementGrpc.OrderManagementImplBas
             }
 
             @Override
-            public void onError(Throwable t) {
-
-            }
+            public void onError(Throwable t) {}
 
             @Override
             public void onCompleted() {
@@ -167,6 +177,7 @@ public class OrderServiceImpl extends OrderManagementGrpc.OrderManagementImplBas
                     responseObserver.onNext(entry.getValue());
                 }
                 responseObserver.onCompleted();
+                System.out.printf("%s [END]\n\n", tag0);
             }
 
         };
