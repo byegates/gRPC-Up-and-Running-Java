@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import static ecommerce.ProductInfoServer.tag;
+import static ecommerce.Server.tag;
 
 public class ProductInfoImpl extends ProductInfoGrpc.ProductInfoImplBase {
     private final Map<String, Product> productMap = new HashMap<>();
